@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant C as Client
+    participant A as API
+    participant P as OPA
+    participant D as Database
+    participant L as Audit Log
+
+    C->>A: HTTP request + Bearer JWT
+    A->>A: Validate token and normalize subject
+    A->>P: Policy decision input
+    P-->>A: allow/deny + reason
+
+    alt allow
+        A->>D: Tenant-scoped query
+        D-->>A: Result
+        A->>L: Emit allow audit event
+        A-->>C: 200 response
+    else deny
+        A->>L: Emit deny audit event
+        A-->>C: 403 response
+    end
