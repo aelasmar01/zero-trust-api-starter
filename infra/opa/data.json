@@ -1,0 +1,6 @@
+{
+  "rbac": {
+    "reader_methods": ["GET"]
+  },
+  "tenants": ["tenant-a", "tenant-b"]
+}

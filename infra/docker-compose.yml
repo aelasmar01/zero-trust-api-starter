@@ -1,0 +1,44 @@
+services:
+  api:
+    image: python:3.12-slim
+    working_dir: /app
+    command: ["sh", "-c", "python -m http.server 8000"]
+    volumes:
+      - ../:/app
+    environment:
+      DATABASE_URL: postgresql://zt_user:zt_pass@db:5432/zt_api
+      OPA_URL: http://opa:8181/v1/data/authz
+    depends_on:
+      - db
+      - opa
+    ports:
+      - "8000:8000"
+
+  opa:
+    image: openpolicyagent/opa:latest
+    command:
+      - run
+      - --server
+      - --addr=0.0.0.0:8181
+      - --set=decision_logs.console=true
+      - /policy/policy.rego
+      - /policy/data.json
+    volumes:
+      - ./opa:/policy:ro
+    ports:
+      - "8181:8181"
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: zt_api
+      POSTGRES_USER: zt_user
+      POSTGRES_PASSWORD: zt_pass
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+
+volumes:
+  db_data:
