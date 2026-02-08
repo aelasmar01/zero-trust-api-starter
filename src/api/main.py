@@ -4,6 +4,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 
 from src.api.audit import emit_authz_audit_event
 from src.api.auth import SubjectContext, get_subject_context
+from src.api.db import fetch_resources_for_tenant
 from src.api.opa_client import query_opa
 
 app = FastAPI(title="Zero Trust API Starter", version="0.1.0")
@@ -60,4 +61,12 @@ def list_tenant_resources(
             detail={"reason": decision.get("reason", "deny")},
         )
 
-    return []
+    try:
+        return fetch_resources_for_tenant(tenant_id=tenant_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"reason": "database_unavailable"},
+        )
