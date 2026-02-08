@@ -73,6 +73,34 @@ def query_opa(
     opa_url: str | None = None,
     timeout_seconds: float | None = None,
 ) -> dict[str, Any]:
+    """
+    Expected OPA input document shape:
+      {
+        "subject": {
+          "sub": str,
+          "tenant": str,
+          "roles": [str],
+          "attrs": {
+            "env": str,                  # optional ABAC attribute
+            "clearance": str,            # optional, e.g. internal/restricted
+            ...
+          }
+        },
+        "request": {
+          "method": str,                 # GET/POST/DELETE...
+          "path": str
+        },
+        "resource": {
+          "tenant": str,
+          "type": str,
+          "attrs": {
+            "env": str,                  # optional ABAC guard
+            "data_classification": str,  # optional, e.g. internal/restricted
+            ...
+          }
+        }
+      }
+    """
     resolved_url = (opa_url or _resolve_opa_url()).strip()
     resolved_timeout = timeout_seconds if timeout_seconds is not None else _resolve_timeout_seconds()
 
