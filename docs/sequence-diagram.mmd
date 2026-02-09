@@ -1,21 +1,30 @@
 sequenceDiagram
     participant C as Client
-    participant A as API
-    participant P as OPA
-    participant D as Database
-    participant L as Audit Log
+    participant A as API (FastAPI)
+    participant O as OPA
+    participant D as Postgres
+    participant L as Audit stdout
 
-    C->>A: HTTP request + Bearer JWT
-    A->>A: Validate token and normalize subject
-    A->>P: Policy decision input
-    P-->>A: allow/deny + reason
+    C->>A: GET /v1/tenant/{tenant_id}/resource + Bearer JWT
+    A->>A: Validate JWT (HS256, exp, iss, aud)
 
-    alt allow
-        A->>D: Tenant-scoped query
-        D-->>A: Result
-        A->>L: Emit allow audit event
-        A-->>C: 200 response
-    else deny
-        A->>L: Emit deny audit event
-        A-->>C: 403 response
+    alt Missing or invalid token
+        A-->>C: 401 Unauthorized
+    else Token valid
+        A->>A: Normalize subject {sub, tenant, roles, attrs}
+        A->>O: POST /v1/data/authz/decision (subject, request, resource)
+        O-->>A: {allow, reason}
+        A->>L: Emit authz audit event (allow/deny)
+
+        alt OPA deny or fail-closed decision
+            A-->>C: 403 Forbidden (reason)
+        else OPA allow
+            A->>D: SELECT ... WHERE tenant_id = :tenant_id
+            alt DB success
+                D-->>A: tenant-scoped rows
+                A-->>C: 200 OK + rows
+            else DB unavailable/error
+                A-->>C: 503 Service Unavailable (database_unavailable)
+            end
+        end
     end
